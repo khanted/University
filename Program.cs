@@ -11,12 +11,15 @@ class Program
     static int number = 0;
     static void Main(string[] args)
     {
+        // Настройка подключения к серверу MySQL
         string server = "localhost";
         string port = "3310";
         string database = "University";
         string user = "root";
         string password = "KC49-MF31L";
         string connectionString = $"Server={server};Port={port};Database={database};User ID={user};Password={password};";
+
+        // Проверка доступности сервера MySQL
         if (!IsServerAvailable(server, int.Parse(port)))
         {
             Console.WriteLine($"Сервер MySQL на {server}:{port} недоступен. Проверьте настройки.");
@@ -29,7 +32,10 @@ class Program
             {
                 connection.Open();
                 Console.WriteLine($"Соединение с базой данных '{database}' на сервере '{server}' установлено.");
+
                 SetForeignKeyChecks(connection, false);
+
+                // Создание и очистка таблиц перед вставкой данных
                 CreateTable(connection);
                 ClearTable(connection);
                 AddSampleData(connection);
@@ -42,6 +48,7 @@ class Program
                 ClearTableCourses(connection);
                 AddSampleCoursesData(connection);
 
+                DropTableExams(connection);
                 CreateTableExams(connection);
                 ClearTableExams(connection);
                 AddSampleExamsData(connection);
@@ -50,6 +57,7 @@ class Program
                 ClearTableGrades(connection);
                 AddSampleGradesData(connection);
 
+                // Включаем проверку внешних ключей обратно
                 SetForeignKeyChecks(connection, true);
 
                 Console.WriteLine();
@@ -79,6 +87,7 @@ class Program
         Console.WriteLine("8. Средний балл студента по определенному курсу.");
         Console.WriteLine("9. Средний балл студента по определенному курсу.");
         Console.WriteLine("10. Средний балл студента по определенному курсу.");
+        Console.WriteLine("11. Перезапуск базы данных.");
         Console.WriteLine("0. Выход");
         int command;
         if (!int.TryParse(Console.ReadLine(), out command))
@@ -252,8 +261,8 @@ class Program
                         flag = false;
                     }
                     Console.WriteLine("Введите максимальный балл.");
-                    int maxscore;
-                    if (!int.TryParse(Console.ReadLine(), out maxscore))
+                    decimal maxscore;
+                    if (!decimal.TryParse(Console.ReadLine(), out maxscore))
                     {
                         Console.WriteLine("Некорректный ввод.");
                         flag = false;
@@ -417,6 +426,28 @@ class Program
                     Console.WriteLine("Пустая строка. Введите факультет снова.");
                 }
                 AverageScoreByDepartment(connection, departmentst);
+                break;
+            case 11:
+                Console.WriteLine("Выполняется перезапуск базы данных");
+                CreateTable(connection);
+                ClearTable(connection);
+                AddSampleData(connection);
+
+                CreateTableTeachers(connection);
+                ClearTableTeachers(connection);
+                AddSampleTeachersData(connection);
+
+                CreateTableCourses(connection);
+                ClearTableCourses(connection);
+                AddSampleCoursesData(connection);
+
+                CreateTableExams(connection);
+                ClearTableExams(connection);
+                AddSampleExamsData(connection);
+
+                CreateTableGrades(connection);
+                ClearTableGrades(connection);
+                AddSampleGradesData(connection);
                 break;
             case 0:
                 CloseOver();
@@ -875,21 +906,6 @@ class Program
         }
     }
 
-    static void CreateTableExams(MySqlConnection connection)
-    {
-        using (var command = new MySqlCommand(@"
-            CREATE TABLE IF NOT EXISTS Exams (
-                ID INT AUTO_INCREMENT PRIMARY KEY,
-                CourseID INT,
-                ExamDate DATE,
-                Duration INT,
-                FOREIGN KEY (CourseID) REFERENCES Courses(ID) ON DELETE CASCADE
-            );", connection))
-        {
-            command.ExecuteNonQuery();
-            Console.WriteLine("Таблица 'Exams' успешно создана.");
-        }
-    }
     static void DeleteCourse(MySqlConnection connection, int courseId)
     {
         using (var deleteExamsCmd = new MySqlCommand("DELETE FROM Exams WHERE CourseID = @courseId", connection))
@@ -913,7 +929,30 @@ class Program
             }
         }
     }
+    static void DropTableExams(MySqlConnection connection)
+    {
+        using (var command = new MySqlCommand("DROP TABLE IF EXISTS Exams;", connection))
+        {
+            command.ExecuteNonQuery();
+            Console.WriteLine("Таблица 'Exams' удалена.");
+        }
+    }
 
+    static void CreateTableExams(MySqlConnection connection)
+    {
+        using (var command = new MySqlCommand(@"
+        CREATE TABLE IF NOT EXISTS Exams (
+            ID INT AUTO_INCREMENT PRIMARY KEY,
+            CourseID INT,
+            ExamDate DATE,
+            MaxScore DECIMAL(5, 2),
+            FOREIGN KEY (CourseID) REFERENCES Courses(ID) ON DELETE CASCADE
+        );", connection))
+        {
+            command.ExecuteNonQuery();
+            Console.WriteLine("Таблица 'Exams' успешно создана.");
+        }
+    }
 
     static void ClearTableExams(MySqlConnection connection)
     {
@@ -929,46 +968,55 @@ class Program
 
     static void AddSampleExamsData(MySqlConnection connection)
     {
-        var exams = new (int CourseID, DateTime ExamDate, int Maxscore)[]
+        var exams = new (int CourseID, DateTime ExamDate, decimal MaxScore)[]
         {
-            (1, new DateTime(2024, 5, 15), 120),
-            (2, new DateTime(2024, 6, 10), 90),
-            (3, new DateTime(2024, 7, 20), 150),
-            (4, new DateTime(2024, 2, 23), 170),
+        (1, new DateTime(2024, 5, 15), 120.00m),
+        (2, new DateTime(2024, 6, 10), 90.30m),
+        (3, new DateTime(2024, 7, 20), 150.45m),
+        (4, new DateTime(2024, 2, 23), 170.80m),
         };
 
         foreach (var exam in exams)
         {
-            InsertExam(connection, exam.ExamDate, exam.CourseID, exam.Maxscore, false);
+            InsertExam(connection, exam.ExamDate, exam.CourseID, exam.MaxScore, false);
         }
     }
 
-    static void InsertExam(MySqlConnection connection, DateTime examDate, int courseId, int maxscore, bool write)
+    static void InsertExam(MySqlConnection connection, DateTime examDate, int courseId, decimal maxscore, bool write)
     {
-        using (var command = new MySqlCommand("SELECT COUNT(*) FROM Courses WHERE ID = @courseId", connection))
-        {
-            command.Parameters.AddWithValue("@courseId", courseId);
-            var count = Convert.ToInt32(command.ExecuteScalar());
-            if (count == 0)
-            {
-                Console.WriteLine($"Курс с ID '{courseId}' не существует. Экзамен не добавлен.");
-                return;
-            }
-        }
+        CreateTableExams(connection);
 
-        string query = "INSERT INTO Exams (CourseID, ExamDate, Duration) VALUES (@CourseID, @ExamDate, @Duration)";
-        using (var command = new MySqlCommand(query, connection))
+        using (var transaction = connection.BeginTransaction())
         {
-            command.Parameters.AddWithValue("@ExamDate", examDate);
-            command.Parameters.AddWithValue("@CourseID", courseId);
-            command.Parameters.AddWithValue("@Duration", maxscore);
-            command.ExecuteNonQuery();
-            if (write)
+            using (var command = new MySqlCommand("SELECT COUNT(*) FROM Courses WHERE ID = @courseId", connection, transaction))
             {
-                Console.WriteLine($"Экзамен для курса ID '{courseId}' успешно добавлен.");
+                command.Parameters.AddWithValue("@courseId", courseId);
+                var count = Convert.ToInt32(command.ExecuteScalar());
+                if (count == 0)
+                {
+                    Console.WriteLine($"Курс с ID '{courseId}' не существует. Экзамен не добавлен.");
+                    transaction.Rollback();
+                    return;
+                }
+            }
+
+            string query = "INSERT INTO Exams (CourseID, ExamDate, MaxScore) VALUES (@CourseID, @ExamDate, @MaxScore)";
+            using (var command = new MySqlCommand(query, connection, transaction))
+            {
+                command.Parameters.AddWithValue("@ExamDate", examDate);
+                command.Parameters.AddWithValue("@CourseID", courseId);
+                command.Parameters.AddWithValue("@MaxScore", maxscore);
+                command.ExecuteNonQuery();
+                transaction.Commit();
+
+                if (write)
+                {
+                    Console.WriteLine($"Экзамен для курса ID '{courseId}' успешно добавлен.");
+                }
             }
         }
     }
+
 
     static void GetExams(MySqlConnection connection)
     {
@@ -977,25 +1025,25 @@ class Program
         {
             while (reader.Read())
             {
-                Console.WriteLine($"ID: {reader["ID"]}, ID курса: {reader["CourseID"]}, Дата экзамена: {reader["ExamDate"]}, Продолжительность: {reader["Duration"]} минут.");
+                Console.WriteLine($"ID: {reader["ID"]}, ID курса: {reader["CourseID"]}, Дата экзамена: {reader["ExamDate"]}, Максимальный балл {reader["MaxScore"]} ");
             }
         }
     }
 
-    static void UpdateExam(MySqlConnection connection, int examId, DateTime newExamDate, int newCourseId, int newDuration)
+    static void UpdateExam(MySqlConnection connection, int examId, DateTime newExamDate, int newCourseId, decimal newMaxScore)
     {
-        using (var command = new MySqlCommand("UPDATE Exams SET CourseID = @courseId, ExamDate = @examDate, Duration = @duration WHERE ID = @examId", connection))
+        using (var command = new MySqlCommand("UPDATE Exams SET CourseID = @courseId, ExamDate = @examDate, MaxScore = @MaxScore WHERE ID = @examId", connection))
         {
             command.Parameters.AddWithValue("@examDate", newExamDate);
             command.Parameters.AddWithValue("@courseId", newCourseId);
-            command.Parameters.AddWithValue("@duration", newDuration);
+            command.Parameters.AddWithValue("@MaxScore", newMaxScore);
             command.Parameters.AddWithValue("@examId", examId);
             command.ExecuteNonQuery();
             Console.WriteLine($"Экзамен с ID '{examId}' успешно обновлён.");
         }
     }
 
-    static void DeleteExam(MySqlConnection connection, int examId)
+        static void DeleteExam(MySqlConnection connection, int examId)
     {
         using (var command = new MySqlCommand("DELETE FROM Exams WHERE ID = @examId", connection))
         {
