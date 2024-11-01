@@ -1,17 +1,16 @@
-﻿using MySql.Data.MySqlClient;
-using Org.BouncyCastle.Operators;
+﻿// Добавляем необходимые библиотеки для работы с MySQL и сокетами
+using MySql.Data.MySqlClient;
 using System;
 using System.Net.Sockets;
-using System.Reflection.PortableExecutable;
-using System.Xml.Linq;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 class Program
 {
+    // Объявляем переменную, чтобы контролировать завершение программы
     static int number = 0;
+
     static void Main(string[] args)
     {
-        // Настройка подключения к серверу MySQL
+        // Настройки подключения к серверу MySQL
         string server = "localhost";
         string port = "3310";
         string database = "University";
@@ -19,20 +18,23 @@ class Program
         string password = "KC49-MF31L";
         string connectionString = $"Server={server};Port={port};Database={database};User ID={user};Password={password};";
 
-        // Проверка доступности сервера MySQL
+        // Проверка доступности сервера MySQL по указанному адресу и порту
         if (!IsServerAvailable(server, int.Parse(port)))
         {
             Console.WriteLine($"Сервер MySQL на {server}:{port} недоступен. Проверьте настройки.");
-            return;
+            return; // Если сервер недоступен, программа завершает выполнение
         }
 
+        // Создание подключения к базе данных
         using (var connection = new MySqlConnection(connectionString))
         {
             try
             {
+                // Открытие соединения с базой данных
                 connection.Open();
                 Console.WriteLine($"Соединение с базой данных '{database}' на сервере '{server}' установлено.");
 
+                // Отключение проверок внешних ключей перед внесением изменений в базу
                 SetForeignKeyChecks(connection, false);
 
                 // Создание и очистка таблиц перед вставкой данных
@@ -57,26 +59,30 @@ class Program
                 ClearTableGrades(connection);
                 AddSampleGradesData(connection);
 
-                // Включаем проверку внешних ключей обратно
+                // Включение проверок внешних ключей обратно
                 SetForeignKeyChecks(connection, true);
 
+                // Основное меню программы
                 Console.WriteLine();
                 Console.WriteLine();
                 Console.WriteLine("Здравствуйте, это база данных университета.");
-                while (number == 0) 
+                while (number == 0) // Бесконечный цикл для работы с базой данных, пока не выбрана команда выхода
                 {
                     ActionMenu(connection);
                 }
             }
             catch (Exception ex)
             {
+                // Обработка исключений, возникающих при подключении и работе с базой данных
                 Console.WriteLine($"Ошибка: {ex.Message}");
             }
         }
     }
+
+    // Метод для отображения меню действий
     static void ActionMenu(MySqlConnection connection)
     {
-        Console.WriteLine("Выбирите пункт:");
+        Console.WriteLine("Выберите пункт:");
         Console.WriteLine("1. Добавление нового студента, преподавателя, курса, экзамена и оценки.");
         Console.WriteLine("2. Изменение информации о студентах, преподавателях и курсах. При выборе введите категорию.");
         Console.WriteLine("3. Удаление студентов, преподавателей, курсов и экзаменов. При выборе введите категорию.");
@@ -85,17 +91,23 @@ class Program
         Console.WriteLine("6. Получение списка студентов, зачисленных на конкретный курс.");
         Console.WriteLine("7. Получение оценок студентов по определенному курсу.");
         Console.WriteLine("8. Средний балл студента по определенному курсу.");
-        Console.WriteLine("9. Средний балл студента по определенному курсу.");
-        Console.WriteLine("10. Средний балл студента по определенному курсу.");
+        Console.WriteLine("9. Средний балл студента по всем курсам.");
+        Console.WriteLine("10. Средний балл по факультету.");
         Console.WriteLine("11. Перезапуск базы данных.");
         Console.WriteLine("0. Выход");
+
         int command;
-        if (!int.TryParse(Console.ReadLine(), out command))
+        // Проверяем, является ли введенная строка числом, и если нет, выводим сообщение об ошибке
+        while (!int.TryParse(Console.ReadLine(), out command) || command < 0 || command > 11)
         {
-            Console.WriteLine("Некорректный ввод команды.");
+            Console.WriteLine("Некорректный ввод команды. Пожалуйста, введите число от 0 до 11.");
         }
+
+        // Выполнение выбранного действия
         ActionMake(connection, command);
     }
+
+    // Метод для выполнения команды из меню
     static void ActionMake(MySqlConnection connection, int command)
     {
         switch (command)
@@ -103,282 +115,310 @@ class Program
             case 1:
             case 2:
             case 3:
-                Console.WriteLine("Введите категорию.(Students, Teachers, Courses, Exams, Grades)");
+                Console.WriteLine("Введите категорию. (Students, Teachers, Courses, Exams, Grades)");
                 string category = Console.ReadLine();
                 bool flag = true;
+
                 if (category == "Students")
                 {
-                    Console.WriteLine("Введите имя.");
-                    string Name = Console.ReadLine();
-                    Console.WriteLine("Введите фамилию.");
-                    string Surname = Console.ReadLine();
-                    Console.WriteLine("Введите факультет.");
-                    string Department = Console.ReadLine();
-                    Console.WriteLine("Введите Дату рождения");
+                    // Логика для добавления, обновления или удаления студента
+                    string Name;
+                    do
+                    {
+                        Console.WriteLine("Введите имя.");
+                        Name = Console.ReadLine();
+                    } while (string.IsNullOrEmpty(Name));
+
+                    string Surname;
+                    do
+                    {
+                        Console.WriteLine("Введите фамилию.");
+                        Surname = Console.ReadLine();
+                    } while (string.IsNullOrEmpty(Surname));
+
+                    string Department;
+                    do
+                    {
+                        Console.WriteLine("Введите факультет.");
+                        Department = Console.ReadLine();
+                    } while (string.IsNullOrEmpty(Department));
+
                     DateTime birthday;
-                    if (!DateTime.TryParse(Console.ReadLine(), out birthday))
+                    while (true)
                     {
-                        Console.WriteLine("Некорректный ввод.");
-                        flag = false;
+                        Console.WriteLine("Введите Дату рождения (дд.мм.гггг)");
+                        if (DateTime.TryParse(Console.ReadLine(), out birthday))
+                            break;
+                        Console.WriteLine("Некорректный ввод. Попробуйте снова.");
                     }
-                    if (string.IsNullOrEmpty(Name) || string.IsNullOrEmpty(Surname) || string.IsNullOrEmpty(Department))
+
+                    if (command == 1)
                     {
-                        Console.WriteLine("Введена пустая строка. Пожалуйста, введите корректное значение.");
-                        flag = false;
+                        InsertUser(connection, Name, Surname, Department, birthday, true);
                     }
-                    if (flag == true)
+                    else if (command == 2)
                     {
-                        if (command == 1)
+                        Console.WriteLine("Введите номер(ID) студента.");
+                        int StudentID;
+                        while (!int.TryParse(Console.ReadLine(), out StudentID) || StudentID <= 0)
                         {
-                            InsertUser(connection, Name, Surname, Department, birthday, true);
+                            Console.WriteLine("Некорректный ввод. Введите положительное число.");
                         }
-                        if (command == 2)
+                        UpdateUser(connection, StudentID, Name, Surname, Department, birthday);
+                    }
+                    else if (command == 3)
+                    {
+                        Console.WriteLine("Введите номер(ID) студента.");
+                        int StudentID;
+                        while (!int.TryParse(Console.ReadLine(), out StudentID) || StudentID <= 0)
                         {
-                            Console.WriteLine("Введите номер(ID) студента.");
-                            int StudentID;
-                            if (!int.TryParse(Console.ReadLine(), out StudentID))
-                            {
-                                Console.WriteLine("Некорректный ввод.");
-                            }
-                            UpdateUser(connection, StudentID, Name, Surname, Department, birthday);
+                            Console.WriteLine("Некорректный ввод. Введите положительное число.");
                         }
-                        if (command == 3)
-                        {
-                            Console.WriteLine("Введите номер(ID) студента.");
-                            int StudentID;
-                            if (!int.TryParse(Console.ReadLine(), out StudentID))
-                            {
-                                Console.WriteLine("Некорректный ввод.");
-                            }
-                            DeleteUser(connection, StudentID);
-                        }
+                        DeleteUser(connection, StudentID);
                     }
                     GetUsers(connection);
                 }
-                if (category == "Teachers")
+                else if (category == "Teachers")
                 {
-                    Console.WriteLine("Введите имя.");
-                    string Name = Console.ReadLine();
-                    Console.WriteLine("Введите фамилию.");
-                    string Surname = Console.ReadLine();
-                    Console.WriteLine("Введите факультет.");
-                    string Department = Console.ReadLine();
-                    if (string.IsNullOrEmpty(Name) || string.IsNullOrEmpty(Surname) || string.IsNullOrEmpty(Department))
+                    // Логика для добавления, обновления или удаления преподавателя
+                    string Name;
+                    do
                     {
-                        Console.WriteLine("Введена пустая строка. Пожалуйста, введите корректное значение.");
-                        flag = false;
+                        Console.WriteLine("Введите имя.");
+                        Name = Console.ReadLine();
+                    } while (string.IsNullOrEmpty(Name));
+
+                    string Surname;
+                    do
+                    {
+                        Console.WriteLine("Введите фамилию.");
+                        Surname = Console.ReadLine();
+                    } while (string.IsNullOrEmpty(Surname));
+
+                    string Department;
+                    do
+                    {
+                        Console.WriteLine("Введите факультет.");
+                        Department = Console.ReadLine();
+                    } while (string.IsNullOrEmpty(Department));
+
+                    if (command == 1)
+                    {
+                        InsertTeacher(connection, Name, Surname, Department, true);
                     }
-                    if (flag == true)
+                    else if (command == 2)
                     {
-                        if (command == 1)
+                        Console.WriteLine("Введите номер(ID) учителя.");
+                        int TeacherID;
+                        while (!int.TryParse(Console.ReadLine(), out TeacherID) || TeacherID <= 0)
                         {
-                            InsertTeacher(connection, Name, Surname, Department, true);
+                            Console.WriteLine("Некорректный ввод. Введите положительное число.");
                         }
-                        if (command == 2)
+                        UpdateTeachers(connection, TeacherID, Name, Surname, Department);
+                    }
+                    else if (command == 3)
+                    {
+                        Console.WriteLine("Введите номер(ID) учителя.");
+                        int TeacherID;
+                        while (!int.TryParse(Console.ReadLine(), out TeacherID) || TeacherID <= 0)
                         {
-                            Console.WriteLine("Введите номер(ID) учителя.");
-                            int TeacherID;
-                            if (!int.TryParse(Console.ReadLine(), out TeacherID))
-                            {
-                                Console.WriteLine("Некорректный ввод.");
-                            }
-                            UpdateTeachers(connection, TeacherID, Name, Surname, Department);
+                            Console.WriteLine("Некорректный ввод. Введите положительное число.");
                         }
-                        if (command == 3)
-                        {
-                            Console.WriteLine("Введите номер(ID) учителя.");
-                            int TeacherID;
-                            if (!int.TryParse(Console.ReadLine(), out TeacherID))
-                            {
-                                Console.WriteLine("Некорректный ввод.");
-                            }
-                            DeleteTeacher(connection, TeacherID);
-                        }
+                        DeleteTeacher(connection, TeacherID);
                     }
                     GetTeachers(connection);
                 }
-                if (category == "Courses")
+                else if (category == "Courses")
                 {
-                    Console.WriteLine("Введите название курса.");
-                    string Title = Console.ReadLine();
-                    Console.WriteLine("Введите описание курса.");
-                    string Description = Console.ReadLine();
+                    // Логика для добавления, обновления или удаления курса
+                    string Title;
+                    do
+                    {
+                        Console.WriteLine("Введите название курса.");
+                        Title = Console.ReadLine();
+                    } while (string.IsNullOrEmpty(Title));
+
+                    string Description;
+                    do
+                    {
+                        Console.WriteLine("Введите описание курса.");
+                        Description = Console.ReadLine();
+                    } while (string.IsNullOrEmpty(Description));
+
                     Console.WriteLine("Введите ID учителя.");
                     int TeacherID;
-                    if (!int.TryParse(Console.ReadLine(), out TeacherID))
+                    while (!int.TryParse(Console.ReadLine(), out TeacherID) || TeacherID <= 0)
                     {
-                        Console.WriteLine("Некорректный ввод.");
-                        flag = false;
+                        Console.WriteLine("Некорректный ввод. Введите положительное число.");
                     }
-                    if (string.IsNullOrEmpty(Title) || string.IsNullOrEmpty(Description))
+
+                    if (command == 1)
                     {
-                        Console.WriteLine("Введена пустая строка. Пожалуйста, введите корректное значение.");
-                        flag = false;
+                        InsertCourse(connection, Title, Description, TeacherID, true);
                     }
-                    if (flag == true)
+                    else if (command == 2)
                     {
-                        if (command == 1)
+                        Console.WriteLine("Введите номер(ID) курса.");
+                        int CourseiD;
+                        while (!int.TryParse(Console.ReadLine(), out CourseiD) || CourseiD <= 0)
                         {
-                            InsertCourse(connection, Title, Description, TeacherID, true);
+                            Console.WriteLine("Некорректный ввод. Введите положительное число.");
                         }
-                        if (command == 2)
+                        UpdateCourse(connection, CourseiD, Title, Description, TeacherID);
+                    }
+                    else if (command == 3)
+                    {
+                        Console.WriteLine("Введите номер(ID) курса.");
+                        int CourseID2;
+                        while (!int.TryParse(Console.ReadLine(), out CourseID2) || CourseID2 <= 0)
                         {
-                            Console.WriteLine("Введите номер(ID) курса.");
-                            int CoursesID;
-                            if (!int.TryParse(Console.ReadLine(), out CoursesID))
-                            {
-                                Console.WriteLine("Некорректный ввод.");
-                            }
-                            UpdateCourse(connection, CoursesID, Title, Description, TeacherID);
+                            Console.WriteLine("Некорректный ввод. Введите положительное число.");
                         }
-                        if (command == 3)
-                        {
-                            Console.WriteLine("Введите номер(ID) курса.");
-                            int CoursesID;
-                            if (!int.TryParse(Console.ReadLine(), out CoursesID))
-                            {
-                                Console.WriteLine("Некорректный ввод.");
-                            }
-                            DeleteCourse(connection, CoursesID);
-                        }
+                        DeleteCourse(connection, CourseID2);
                     }
                     GetCourses(connection);
                 }
-                if (category == "Exams")
+                else if (category == "Exams")
                 {
-                    Console.WriteLine("Введите день экзамена.");
+                    // Логика для добавления, обновления или удаления экзамена
                     DateTime examDate;
-                    if (!DateTime.TryParse(Console.ReadLine(), out examDate))
+                    while (true)
                     {
-                        Console.WriteLine("Некорректный ввод.");
-                        flag = false;
+                        Console.WriteLine("Введите день экзамена (дд.мм.гггг)");
+                        if (DateTime.TryParse(Console.ReadLine(), out examDate))
+                            break;
+                        Console.WriteLine("Некорректный ввод. Попробуйте снова.");
                     }
+
                     Console.WriteLine("Введите ID курса.");
                     int courseId;
-                    if (!int.TryParse(Console.ReadLine(), out courseId))
+                    while (!int.TryParse(Console.ReadLine(), out courseId) || courseId <= 0)
                     {
-                        Console.WriteLine("Некорректный ввод.");
-                        flag = false;
+                        Console.WriteLine("Некорректный ввод. Введите положительное число.");
                     }
-                    Console.WriteLine("Введите максимальный балл.");
-                    decimal maxscore;
-                    if (!decimal.TryParse(Console.ReadLine(), out maxscore))
+
+                    Console.WriteLine("Введите максимальный балл (0-1000).");
+                    decimal maxScore;
+                    while (!decimal.TryParse(Console.ReadLine(), out maxScore) || maxScore < 0 || maxScore > 1000)
                     {
-                        Console.WriteLine("Некорректный ввод.");
-                        flag = false;
+                        Console.WriteLine("Некорректный ввод. Максимальный балл должен быть в диапазоне от 0 до 1000.");
                     }
-                    if (flag)
+
+                    if (command == 1)
                     {
-                        if (command == 1)
+                        InsertExam(connection, examDate, courseId, maxScore, true);
+                    }
+                    else if (command == 2)
+                    {
+                        Console.WriteLine("Введите номер(ID) экзамена.");
+                        int ExamID;
+                        while (!int.TryParse(Console.ReadLine(), out ExamID) || ExamID <= 0)
                         {
-                            InsertExam(connection, examDate, courseId, maxscore, true);
+                            Console.WriteLine("Некорректный ввод. Введите положительное число.");
                         }
-                        if (command == 2)
+                        UpdateExam(connection, ExamID, examDate, courseId, maxScore);
+                    }
+                    else if (command == 3)
+                    {
+                        Console.WriteLine("Введите номер(ID) экзамена.");
+                        int ExamID;
+                        while (!int.TryParse(Console.ReadLine(), out ExamID) || ExamID <= 0)
                         {
-                            Console.WriteLine("Введите номер(ID) экзамена.");
-                            int ExamID;
-                            if (!int.TryParse(Console.ReadLine(), out ExamID))
-                            {
-                                Console.WriteLine("Некорректный ввод.");
-                            }
-                            UpdateExam(connection, ExamID, examDate, courseId, maxscore);
+                            Console.WriteLine("Некорректный ввод. Введите положительное число.");
                         }
-                        if (command == 3)
-                        {
-                            Console.WriteLine("Введите номер(ID) экзамена.");
-                            int ExamID;
-                            if (!int.TryParse(Console.ReadLine(), out ExamID))
-                            {
-                                Console.WriteLine("Некорректный ввод.");
-                            }
-                            DeleteExam(connection, ExamID);
-                        }
+                        DeleteExam(connection, ExamID);
                     }
                     GetExams(connection);
                 }
-                if (category == "Grades")
+                else if (category == "Grades")
                 {
-                    int studentId, examId, score;
+                    // Логика для добавления, обновления или удаления оценки
+                    int studentId;
                     Console.Write("Введите ID студента.");
-                    if (!int.TryParse(Console.ReadLine(), out studentId))
+                    while (!int.TryParse(Console.ReadLine(), out studentId) || studentId <= 0)
                     {
-                        Console.WriteLine("Некорректный ввод.");
-                        flag = false;
+                        Console.WriteLine("Некорректный ввод. Введите положительное число.");
                     }
+
+                    int examId;
                     Console.Write("Введите ID экзамена.");
-                    if (!int.TryParse(Console.ReadLine(), out examId))
+                    while (!int.TryParse(Console.ReadLine(), out examId) || examId <= 0)
                     {
-                        Console.WriteLine("Некорректный ввод.");
-                        flag = false;
+                        Console.WriteLine("Некорректный ввод. Введите положительное число.");
                     }
-                    Console.Write("Введите оценку.");
-                    if (!int.TryParse(Console.ReadLine(), out score))
+
+                    decimal score;
+                    Console.Write("Введите оценку (0-100).");
+                    while (!decimal.TryParse(Console.ReadLine(), out score) || score < 0 || score > 100)
                     {
-                        Console.WriteLine("Некорректный ввод.");
-                        flag = false;
+                        Console.WriteLine("Некорректный ввод. Оценка должна быть в диапазоне от 0 до 100.");
                     }
-                    if (flag)
+
+                    if (command == 1)
                     {
-                        if (command == 1)
+                        InsertGrade(connection, studentId, examId, score, true);
+                    }
+                    else if (command == 2)
+                    {
+                        Console.WriteLine("Введите номер(ID) оценки.");
+                        int GradeID;
+                        while (!int.TryParse(Console.ReadLine(), out GradeID) || GradeID <= 0)
                         {
-                            InsertGrade(connection, studentId, examId, score, true);
+                            Console.WriteLine("Некорректный ввод. Введите положительное число.");
                         }
-                        if (command == 2)
+                        UpdateGrade(connection, GradeID, studentId, examId, score);
+                    }
+                    else if (command == 3)
+                    {
+                        Console.WriteLine("Введите номер(ID) оценки.");
+                        int GradeID;
+                        while (!int.TryParse(Console.ReadLine(), out GradeID) || GradeID <= 0)
                         {
-                            Console.WriteLine("Введите номер(ID) оценки.");
-                            int GradeID;
-                            if (!int.TryParse(Console.ReadLine(), out GradeID))
-                            {
-                                Console.WriteLine("Некорректный ввод.");
-                            }
-                            UpdateGrade(connection, GradeID, studentId, examId, score);
+                            Console.WriteLine("Некорректный ввод. Введите положительное число.");
                         }
-                        if (command == 3)
-                        {
-                            Console.WriteLine("Введите номер(ID) оценки.");
-                            int GradeID;
-                            if (!int.TryParse(Console.ReadLine(), out GradeID))
-                            {
-                                Console.WriteLine("Некорректный ввод.");
-                            }
-                            DeleteGrade(connection, GradeID);
-                        }
+                        DeleteGrade(connection, GradeID);
                     }
                     GetGrades(connection);
+                }
+                else
+                {
+                    Console.WriteLine("Некорректная категория.");
                 }
                 break;
 
             case 4:
                 Console.WriteLine("Введите факультет.");
-                string department = Console.ReadLine();
-                if (string.IsNullOrEmpty(department))
+                string department;
+                do
                 {
-                    Console.WriteLine("Пустая строка. Введите факультет снова.");
-                }
-                else
-                {
-                    GetStudentsByDepartment(connection, department);
-                }
+                    department = Console.ReadLine();
+                    if (string.IsNullOrEmpty(department))
+                    {
+                        Console.WriteLine("Пустая строка. Введите факультет снова.");
+                    }
+                } while (string.IsNullOrEmpty(department));
+                GetStudentsByDepartment(connection, department);
                 break;
             case 5:
                 Console.WriteLine("Введите имя учителя.");
-                string NameTeacher = Console.ReadLine();
-                if (string.IsNullOrEmpty(NameTeacher))
+                string NameTeacher;
+                do
                 {
-                    Console.WriteLine("Пустая строка.Введите имя снова.");
-                }
-                else
-                {
-                    GetCoursesByTeacherName(connection, NameTeacher);
-                }
+                    NameTeacher = Console.ReadLine();
+                    if (string.IsNullOrEmpty(NameTeacher))
+                    {
+                        Console.WriteLine("Пустая строка. Введите имя снова.");
+                    }
+                } while (string.IsNullOrEmpty(NameTeacher));
+                GetCoursesByTeacherName(connection, NameTeacher);
                 break;
             case 6:
             case 7:
                 int courseID;
                 Console.Write("Введите ID курса.");
-                if (!int.TryParse(Console.ReadLine(), out courseID))
+                while (!int.TryParse(Console.ReadLine(), out courseID) || courseID <= 0)
                 {
-                    Console.WriteLine("Некорректный ввод.");
+                    Console.WriteLine("Некорректный ввод. Введите положительное число.");
                 }
                 if (command == 6)
                 {
@@ -392,39 +432,37 @@ class Program
             case 8:
             case 9:
                 int CourseID;
-                bool flagEror = false;
                 Console.Write("Введите ID курса.");
-                if (!int.TryParse(Console.ReadLine(), out CourseID))
+                while (!int.TryParse(Console.ReadLine(), out CourseID) || CourseID <= 0)
                 {
-                    Console.WriteLine("Некорректный ввод.");
-                    flagEror = true;
+                    Console.WriteLine("Некорректный ввод. Введите положительное число.");
                 }
                 Console.Write("Введите ID студента.");
                 int studentID;
-                if (!int.TryParse(Console.ReadLine(), out studentID))
+                while (!int.TryParse(Console.ReadLine(), out studentID) || studentID <= 0)
                 {
-                    Console.WriteLine("Некорректный ввод.");
-                    flagEror = true;
+                    Console.WriteLine("Некорректный ввод. Введите положительное число.");
                 }
-                if (flagEror == false)
+                if (command == 8)
                 {
-                    if (command == 8)
-                    {
-                        AverageFromCourses(connection, CourseID, studentID);
-                    }
-                    if (command == 9)
-                    {
-                        AverageFromAll(connection, studentID);
-                    }
+                    AverageFromCourses(connection, CourseID, studentID);
+                }
+                if (command == 9)
+                {
+                    AverageFromAll(connection, studentID);
                 }
                 break;
             case 10:
                 Console.WriteLine("Введите факультет.");
-                string departmentst = Console.ReadLine();
-                if (string.IsNullOrEmpty(departmentst))
+                string departmentst;
+                do
                 {
-                    Console.WriteLine("Пустая строка. Введите факультет снова.");
-                }
+                    departmentst = Console.ReadLine();
+                    if (string.IsNullOrEmpty(departmentst))
+                    {
+                        Console.WriteLine("Пустая строка. Введите факультет снова.");
+                    }
+                } while (string.IsNullOrEmpty(departmentst));
                 AverageScoreByDepartment(connection, departmentst);
                 break;
             case 11:
@@ -450,18 +488,22 @@ class Program
                 AddSampleGradesData(connection);
                 break;
             case 0:
-                CloseOver();
-                connection.Close();
+                CloseOver(); // Увеличиваем переменную для выхода из цикла
+                connection.Close(); // Закрываем соединение
                 break;
             default:
                 Console.WriteLine("Некорректный пункт.");
                 break;
         }
     }
+
+    // Метод для выхода из программы
     static void CloseOver()
     {
-            number += 1;
+        number += 1;
     }
+
+    // Метод для проверки доступности сервера MySQL
     static bool IsServerAvailable(string server, int port)
     {
         try
@@ -469,14 +511,16 @@ class Program
             using (var tcpClient = new TcpClient())
             {
                 tcpClient.Connect(server, port);
-                return true;
+                return true; // Если подключение удалось, возвращаем true
             }
         }
         catch (SocketException)
         {
-            return false;
+            return false; // Если возникло исключение, сервер недоступен
         }
     }
+
+    // Отключение или включение проверки внешних ключей
     static void SetForeignKeyChecks(MySqlConnection connection, bool enable)
     {
         using (var command = new MySqlCommand(enable ? "SET FOREIGN_KEY_CHECKS=1;" : "SET FOREIGN_KEY_CHECKS=0;", connection))
@@ -484,6 +528,7 @@ class Program
             command.ExecuteNonQuery();
         }
     }
+
     static void CreateTable(MySqlConnection connection)
     {
         using (var command = new MySqlCommand(@"
@@ -1043,7 +1088,7 @@ class Program
         }
     }
 
-        static void DeleteExam(MySqlConnection connection, int examId)
+    static void DeleteExam(MySqlConnection connection, int examId)
     {
         using (var command = new MySqlCommand("DELETE FROM Exams WHERE ID = @examId", connection))
         {
@@ -1172,7 +1217,7 @@ class Program
         }
     }
 
-    static void UpdateGrade(MySqlConnection connection, int gradeId, int studentId, int examId, int newScore)
+    static void UpdateGrade(MySqlConnection connection, int gradeId, int studentId, int examId, decimal newScore)
     {
         string query = "UPDATE Grades SET Score = @score WHERE ID = @gradeId AND StudentID = @studentId AND ExamID = @examId";
 
